@@ -1,6 +1,7 @@
 use std::env;
 use std::time::Instant;
 
+use nom::bytes::complete::take_until;
 use nom::bytes::streaming::tag;
 use nom::character::complete::alphanumeric1;
 use nom::combinator::value;
@@ -17,15 +18,19 @@ enum FileType {
 
 fn parse_filetype(file_path: &str) -> IResult<&str, FileType> {
     nom::branch::alt((
-        value(FileType::Docx, terminated(alphanumeric1, tag(".docx"))),
-        value(FileType::Pdf, terminated(alphanumeric1, tag(".pdf"))),
+        value(FileType::Docx, take_until(".docx")),
+        value(FileType::Pdf, take_until(".pdf")),
     ))(file_path)
 }
 
 #[test]
 fn parse_filetype_test() {
-    assert_eq!(parse_filetype("testfil.docx"), Ok(("", FileType::Docx)));
-    assert_eq!(parse_filetype("testfil.pdf"), Ok(("", FileType::Pdf)));
+    assert_eq!(
+        parse_filetype("test-fil.docx"),
+        Ok((".docx", FileType::Docx))
+    );
+    assert_eq!(parse_filetype("testfil.pdf"), Ok((".pdf", FileType::Pdf)));
+    assert_eq!(parse_filetype("test fil.pdf"), Ok((".pdf", FileType::Pdf)));
     assert!(parse_filetype("testfilær.txt").is_err());
 }
 
