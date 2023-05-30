@@ -86,8 +86,9 @@ fn parse_contact(input: &str) -> IResult<&str, Contact> {
 // Maybe this can be simplified with nom?
 // Time complexity of search is O(n^2) ?
 // Contact list of n elements * Two-Way matching of input.contains (n)
-pub fn parse(_search_term: &String, file_path: &String) -> Result<String, &'static str> {
-    let mut needles_file = File::open("contacts.txt").unwrap();
+// todo: clean up
+pub fn parse(contacts_path: &String, file_path: &String) -> Result<String, &'static str> {
+    let mut needles_file = File::open(contacts_path).unwrap();
     let mut buf = String::new();
     let _ = needles_file.read_to_string(&mut buf).unwrap();
     let contacts = buf.lines().fold(Vec::new(), |mut acc, line| {
@@ -96,6 +97,7 @@ pub fn parse(_search_term: &String, file_path: &String) -> Result<String, &'stat
         }
         acc
     });
+    println!("Found {} contacts", contacts.len());
 
     let file = File::open(file_path).unwrap();
     let mut archive = ZipArchive::new(file).unwrap();
@@ -112,14 +114,8 @@ pub fn parse(_search_term: &String, file_path: &String) -> Result<String, &'stat
 
         match doc {
             Ok(doc) => {
-                //
-                // let parsed = parse_wbody(doc.input_text());
-                // if let Ok((_, (begin, end))) = parsed {
-                //     println!("Found body: {} {}", begin, end);
-                // }
                 let root = doc.root().first_child().unwrap();
                 let body = root.first_element_child().unwrap();
-                println!("Found body: {}", body.tag_name().name());
                 let haystack = body.descendants().fold(Vec::new(), |mut acc, elem| {
                     if elem.has_tag_name("p") {
                         elem.descendants().for_each(|elem| {
@@ -138,6 +134,7 @@ pub fn parse(_search_term: &String, file_path: &String) -> Result<String, &'stat
                     acc
                 });
 
+                println!("\nStarting search...");
                 let matches = haystack.iter().fold(HashSet::new(), |mut acc, substack| {
                     for needle in &contacts {
                         if substack.contains(needle.0) {
@@ -148,13 +145,9 @@ pub fn parse(_search_term: &String, file_path: &String) -> Result<String, &'stat
                 });
 
                 println!("Found {} matches", matches.len());
-                for match_ in matches {
-                    println!("Match: {:?}", match_);
+                for (i, match_) in matches.iter().enumerate() {
+                    println!("{}: {:?}", i + 1, match_);
                 }
-                // println!("Found {} paragraphs", haystack.len());
-                // for paragraph in haystack {
-                //     println!("Paragraph: {}", paragraph);
-                // }
             }
             Err(_) => {
                 return Err("Could not parse XML tree");
@@ -164,5 +157,5 @@ pub fn parse(_search_term: &String, file_path: &String) -> Result<String, &'stat
         return Err("Could not find document name");
     }
 
-    Ok("".to_owned())
+    Ok("Success".to_owned())
 }
