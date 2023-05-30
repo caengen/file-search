@@ -1,13 +1,15 @@
+use std::char::ParseCharError;
+use std::collections::HashSet;
 use std::fs::File;
 use std::io::Read;
 
-use docx::document::Paragraph;
-use docx::DocxFile;
-use nom::bytes::complete::{tag_no_case, take_while};
-use nom::character::complete::{alphanumeric1, char};
-use nom::multi::many0;
-use nom::sequence::delimited;
-use nom::{branch, AsChar, IResult};
+use nom::bytes::complete::*;
+use nom::character::complete::*;
+use nom::combinator::*;
+use nom::error::ParseError;
+use nom::sequence::*;
+use nom::Err;
+use nom::IResult;
 use zip::ZipArchive;
 enum AttributeType {
     OfficeDocument,
@@ -22,6 +24,16 @@ impl AttributeType {
     }
 }
 
+#[derive(Clone, Debug)]
+struct Paragraph {
+    text: String, // runs: Vec<Run>,
+}
+
+#[derive(Clone, Debug)]
+struct Run {
+    text: String,
+}
+
 fn get_doc_name(archive: &mut ZipArchive<File>) -> Option<String> {
     let mut doc_name = None;
     let mut rels = archive.by_name("_rels/.rels").unwrap();
@@ -31,69 +43,60 @@ fn get_doc_name(archive: &mut ZipArchive<File>) -> Option<String> {
     let rel_xml = roxmltree::Document::parse(&rels_buffer).unwrap();
 
     for elem in rel_xml.descendants() {
-        let mut found = false;
-        for attr in elem.attributes() {
+        'outer: for attr in elem.attributes() {
             if attr.name() == "Type" && attr.value() == AttributeType::OfficeDocument.as_str() {
                 if let Some(target) = elem.attribute("Target") {
                     doc_name = Some(target.to_owned());
                 }
-                found = true;
-                break;
+                break 'outer;
             }
-        }
-        if found {
-            break;
         }
     }
 
     doc_name
 }
 
-fn parse_tag_content(input: &str) -> IResult<&str, &str> {
-    take_while(AsChar::is_alphanum)(input)
+fn sp(input: &str) -> IResult<&str, &str> {
+    take_while(|c: char| c.is_whitespace())(input)
 }
 
-fn parse_xml_tag_begin(input: &str) -> IResult<&str, &str> {
-    delimited(char('<'), alphanumeric1, char('>'))(input)
-}
-
-#[test]
-fn parse_xml_tag_begin_test() {
-    assert_eq!(Ok(("", "1")), parse_xml_tag_begin("<1>"));
-    assert!(parse_xml_tag_begin("<>").is_err());
-    assert_eq!(Ok(("", "span")), parse_xml_tag_begin("<span>"));
-}
-
-fn parse_xml_tag_end(input: &str) -> IResult<&str, &str> {
-    delimited(tag_no_case("</"), alphanumeric1, char('>'))(input)
-}
-#[test]
-fn parse_xml_tag_end_test() {
-    assert!(parse_xml_tag_end("<1>").is_err());
-    assert!(parse_xml_tag_end("<>").is_err());
-    assert_eq!(Ok(("", "span")), parse_xml_tag_end("</span>"));
-}
-
-fn parse_xml_string_content(input: &str) -> IResult<&str, Vec<&str>> {
-    many0(branch::alt((
-        delimited(parse_xml_tag_begin, parse_tag_content, parse_xml_tag_end),
-        delimited(parse_xml_tag_begin, parse_tag_content, parse_xml_tag_begin),
-    )))(input)
+fn parse_str(input: &str) -> IResult<&str, &str> {
+    escaped(alphanumeric0, '\\', one_of("\"\\"))(input)
 }
 
 #[test]
-fn parse_xml_string_content_test() {
-    assert_eq!(
-        Ok(("", vec!["test"])),
-        parse_xml_string_content("<1>test</1>")
-    );
-    assert_eq!(
-        Ok(("", vec!["test, dette, her"])),
-        parse_xml_string_content("<a>test<sp>dette</sp><str>her</str></a>")
-    );
+fn parse_str_test() {
+    assert_eq!(Ok(("", "test")), parse_str("\"test\""));
+}
+type Contact<'a> = (&'a str, &'a str);
+
+fn contact_from_str<'a>(input: (&'a str, &'a str)) -> Result<Contact<'a>, ParseCharError> {
+    Ok(input)
 }
 
+fn parse_contact_line(input: &str) -> IResult<&str, (&str, &str)> {
+    separated_pair(is_not(","), char(','), is_not("\n"))(input)
+}
+
+fn parse_contact(input: &str) -> IResult<&str, Contact> {
+    map_res(parse_contact_line, contact_from_str)(input)
+}
+
+// The largest chunk of time is spent on parsing the XML tree of the document.
+// Maybe this can be simplified with nom?
+// Time complexity of search is O(n^2) ?
+// Contact list of n elements * Two-Way matching of input.contains (n)
 pub fn parse(_search_term: &String, file_path: &String) -> Result<String, &'static str> {
+    let mut needles_file = File::open("contacts.txt").unwrap();
+    let mut buf = String::new();
+    let _ = needles_file.read_to_string(&mut buf).unwrap();
+    let contacts = buf.lines().fold(Vec::new(), |mut acc, line| {
+        if let Ok((_, contact)) = parse_contact(line) {
+            acc.push(contact);
+        }
+        acc
+    });
+
     let file = File::open(file_path).unwrap();
     let mut archive = ZipArchive::new(file).unwrap();
 
@@ -109,16 +112,54 @@ pub fn parse(_search_term: &String, file_path: &String) -> Result<String, &'stat
 
         match doc {
             Ok(doc) => {
-                let parsed = parse_xml_string_content(doc.input_text());
-                println!("{:?}", parsed);
+                //
+                // let parsed = parse_wbody(doc.input_text());
+                // if let Ok((_, (begin, end))) = parsed {
+                //     println!("Found body: {} {}", begin, end);
+                // }
+                let root = doc.root().first_child().unwrap();
+                let body = root.first_element_child().unwrap();
+                println!("Found body: {}", body.tag_name().name());
+                let haystack = body.descendants().fold(Vec::new(), |mut acc, elem| {
+                    if elem.has_tag_name("p") {
+                        elem.descendants().for_each(|elem| {
+                            if elem.has_tag_name("r") {
+                                elem.descendants().for_each(|elem| {
+                                    if elem.has_tag_name("t") {
+                                        if let Some(text) = elem.text() {
+                                            acc.push(text);
+                                        }
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    acc
+                });
+
+                let matches = haystack.iter().fold(HashSet::new(), |mut acc, substack| {
+                    for needle in &contacts {
+                        if substack.contains(needle.0) {
+                            acc.insert(needle);
+                        }
+                    }
+                    acc
+                });
+
+                println!("Found {} matches", matches.len());
+                for match_ in matches {
+                    println!("Match: {:?}", match_);
+                }
+                // println!("Found {} paragraphs", haystack.len());
+                // for paragraph in haystack {
+                //     println!("Paragraph: {}", paragraph);
+                // }
             }
             Err(_) => {
                 return Err("Could not parse XML tree");
             }
         }
-        // for elem in doc.input_text() {
-        //     println!("{:?}", elem);
-        // }
     } else {
         return Err("Could not find document name");
     }
