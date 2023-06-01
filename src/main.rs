@@ -1,4 +1,5 @@
 use std::env;
+use std::io::{Error, ErrorKind};
 use std::time::Instant;
 
 use nom::bytes::complete::take_until;
@@ -9,6 +10,8 @@ use nom::sequence::terminated;
 use nom::IResult;
 
 mod docx_parser;
+mod pdf_parser;
+mod util_parsers;
 
 #[derive(Clone, Debug, PartialEq)]
 enum FileType {
@@ -44,8 +47,8 @@ fn main() {
     let start = Instant::now();
     let result = match parse_filetype(file_path) {
         Ok((_, FileType::Docx)) => docx_parser::parse(contacts_path, file_path),
-        Ok((_, FileType::Pdf)) => Err("Pdf parsing not implemented"),
-        Err(_) => Err("Unsupported file type"),
+        Ok((_, FileType::Pdf)) => pdf_parser::parse(contacts_path, file_path),
+        Err(_) => Err(Error::new(ErrorKind::Unsupported, "Unsupported file type")),
     };
     let duration = start.elapsed();
     println!(
