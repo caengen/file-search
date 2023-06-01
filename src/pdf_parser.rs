@@ -11,13 +11,13 @@ pub fn parse(needles_path: &str, haystack_path: &str) -> Result<(), Error> {
     let mut needles_file = File::open(needles_path)?;
     let mut buf = String::new();
     let _ = needles_file.read_to_string(&mut buf)?;
-    let contacts: Vec<(&str, &str)> = buf.lines().fold(Vec::new(), |mut acc, line| {
+    let needles: Vec<(&str, &str)> = buf.lines().fold(Vec::new(), |mut acc, line| {
         if let Ok((_, contact)) = parse_contact(line) {
             acc.push(contact);
         }
         acc
     });
-    println!("Searching accross {} contacts", contacts.len());
+    println!("Searching accross {} contacts", needles.len());
 
     let bytes = std::fs::read(&haystack_path)?;
 
@@ -29,7 +29,7 @@ pub fn parse(needles_path: &str, haystack_path: &str) -> Result<(), Error> {
         let trimmed = line.trim();
         if trimmed.len() > 0 {
             println!("{}", trimmed);
-            for needle in &contacts {
+            for needle in &needles {
                 if trimmed.contains(needle.0) {
                     acc.insert(needle);
                 }

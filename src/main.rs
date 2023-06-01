@@ -41,13 +41,16 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     println!("\nProgram args: {:?}\n", args);
 
-    let contacts_path = &args[1];
-    let file_path = &args[2];
+    // Expect the format of the needles file to be:
+    // <search term>,<other unique identifier>
+    // e.g.: "Ola Nordmann,ola.nordmann@epost.no"
+    let needles_path = &args[1];
+    let haystack_path = &args[2];
 
     let start = Instant::now();
-    let result = match parse_filetype(file_path) {
-        Ok((_, FileType::Docx)) => docx_parser::parse(contacts_path, file_path),
-        Ok((_, FileType::Pdf)) => pdf_parser::parse(contacts_path, file_path),
+    let result = match parse_filetype(haystack_path) {
+        Ok((_, FileType::Docx)) => docx_parser::parse(needles_path, haystack_path),
+        Ok((_, FileType::Pdf)) => pdf_parser::parse(needles_path, haystack_path),
         Err(_) => Err(Error::new(ErrorKind::Unsupported, "Unsupported file type")),
     };
     let duration = start.elapsed();
