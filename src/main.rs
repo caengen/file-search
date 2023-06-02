@@ -11,6 +11,7 @@ use nom::IResult;
 
 mod docx_parser;
 mod pdf_parser;
+#[macro_use]
 mod util_parsers;
 
 #[derive(Clone, Debug, PartialEq)]

@@ -5,18 +5,12 @@ use std::io::{Error, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
+use crate::read_needles_from_file;
 use crate::util_parsers::parse_contact;
 
 pub fn parse(needles_path: &str, haystack_path: &str) -> Result<(), Error> {
-    let mut needles_file = File::open(needles_path)?;
-    let mut buf = String::new();
-    let _ = needles_file.read_to_string(&mut buf)?;
-    let needles: Vec<(&str, &str)> = buf.lines().fold(Vec::new(), |mut acc, line| {
-        if let Ok((_, contact)) = parse_contact(line) {
-            acc.push(contact);
-        }
-        acc
-    });
+    let mut needle_buf = String::new();
+    let needles = read_needles_from_file!(needles_path, needle_buf);
     println!("Searching accross {} contacts", needles.len());
 
     let bytes = std::fs::read(&haystack_path)?;

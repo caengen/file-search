@@ -4,6 +4,7 @@ use std::io::{Error, ErrorKind, Read};
 
 use zip::ZipArchive;
 
+use crate::read_needles_from_file;
 use crate::util_parsers::parse_contact;
 enum AttributeType {
     OfficeDocument,
@@ -45,17 +46,10 @@ fn get_doc_name(archive: &mut ZipArchive<File>) -> Option<String> {
 // Time complexity of search is O(n^2) ?
 // Contact list of n elements * Two-Way matching of input.contains (n)
 // todo: clean up
-pub fn parse(contacts_path: &String, file_path: &String) -> Result<(), Error> {
-    let mut needles_file = File::open(contacts_path).unwrap();
-    let mut buf = String::new();
-    let _ = needles_file.read_to_string(&mut buf).unwrap();
-    let contacts = buf.lines().fold(Vec::new(), |mut acc, line| {
-        if let Ok((_, contact)) = parse_contact(line) {
-            acc.push(contact);
-        }
-        acc
-    });
-    println!("Searching accross {} contacts", contacts.len());
+pub fn parse(needle_path: &String, file_path: &String) -> Result<(), Error> {
+    let mut needle_buf = String::new();
+    let needles = read_needles_from_file!(needle_path, needle_buf);
+    println!("Searching accross {} contacts", needles.len());
 
     let file: File = File::open(file_path).unwrap();
     let mut archive = ZipArchive::new(file).unwrap();
@@ -103,7 +97,7 @@ pub fn parse(contacts_path: &String, file_path: &String) -> Result<(), Error> {
 
                 println!("\nStarting search...");
                 let matches = haystack.iter().fold(HashSet::new(), |mut acc, substack| {
-                    for needle in &contacts {
+                    for needle in &needles {
                         if substack.contains(needle.0) {
                             acc.insert(needle);
                         }

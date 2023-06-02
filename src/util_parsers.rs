@@ -22,3 +22,22 @@ fn parse_contact_line(input: &str) -> IResult<&str, Contact> {
 pub fn parse_contact(input: &str) -> IResult<&str, Contact> {
     map_res(parse_contact_line, contact_from_str)(input)
 }
+
+mod macros {
+    #[macro_export]
+    macro_rules! read_needles_from_file {
+        ($path:expr, $buf:ident) => {{
+            let mut needles_file = File::open($path).unwrap();
+            let _ = needles_file.read_to_string(&mut $buf).unwrap();
+
+            let needles = $buf.lines().fold(Vec::new(), |mut acc, line| {
+                if let Ok((_, contact)) = parse_contact(line) {
+                    acc.push(contact);
+                }
+                acc
+            });
+
+            needles
+        }};
+    }
+}
