@@ -24,6 +24,7 @@ pub fn parse_contact(input: &str) -> IResult<&str, Contact> {
 }
 
 mod macros {
+    // this really doesn't need to be a macro, but I wanted to try it out
     #[macro_export]
     macro_rules! read_needles_from_file {
         ($path:expr, $buf:ident) => {{
