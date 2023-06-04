@@ -23,6 +23,19 @@ pub fn parse_contact(input: &str) -> IResult<&str, Contact> {
     map_res(parse_contact_line, contact_from_str)(input)
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub enum FileType {
+    Docx,
+    Pdf,
+}
+
+pub fn parse_filetype(file_path: &str) -> IResult<&str, FileType> {
+    nom::branch::alt((
+        value(FileType::Docx, take_until(".docx")),
+        value(FileType::Pdf, take_until(".pdf")),
+    ))(file_path)
+}
+
 mod macros {
     // this really doesn't need to be a macro, but I wanted to try it out
     #[macro_export]

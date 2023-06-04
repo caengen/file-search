@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use crate::read_needles_from_file;
-use crate::util_parsers::parse_contact;
+use crate::util::parse_contact;
 
 pub fn parse(needles_path: &str, haystack_path: &str) -> Result<(), Error> {
     let mut needle_buf = String::new();

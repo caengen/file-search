@@ -5,7 +5,7 @@ use std::io::{Error, ErrorKind, Read};
 use zip::ZipArchive;
 
 use crate::read_needles_from_file;
-use crate::util_parsers::parse_contact;
+use crate::util::parse_contact;
 enum AttributeType {
     OfficeDocument,
 }

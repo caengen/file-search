@@ -9,23 +9,12 @@ use nom::combinator::value;
 use nom::sequence::terminated;
 use nom::IResult;
 
+use crate::util::{parse_filetype, FileType};
+
 mod docx_parser;
 mod pdf_parser;
 #[macro_use]
-mod util_parsers;
-
-#[derive(Clone, Debug, PartialEq)]
-enum FileType {
-    Docx,
-    Pdf,
-}
-
-fn parse_filetype(file_path: &str) -> IResult<&str, FileType> {
-    nom::branch::alt((
-        value(FileType::Docx, take_until(".docx")),
-        value(FileType::Pdf, take_until(".pdf")),
-    ))(file_path)
-}
+mod util;
 
 #[test]
 fn parse_filetype_test() {
