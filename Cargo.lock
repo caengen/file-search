@@ -238,20 +238,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "docx-name-extractor"
-version = "0.1.0"
-dependencies = [
- "docx",
- "nom",
- "pdf-extract",
- "roxmltree",
- "serde",
- "serde_json",
- "shellexpand",
- "zip 0.6.4",
-]
-
-[[package]]
 name = "encoding"
 version = "0.2.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -322,6 +308,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2bb7ef65b3777a325d1eeefefab5b6d4959da54747e33bd6258e789640f307ad"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "file-search"
+version = "0.1.0"
+dependencies = [
+ "docx",
+ "nom",
+ "pdf-extract",
+ "roxmltree",
+ "serde",
+ "serde_json",
+ "shellexpand",
+ "zip 0.6.4",
 ]
 
 [[package]]
