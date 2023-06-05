@@ -3,7 +3,7 @@ use std::fs::File;
 use std::io::{Cursor, Error, ErrorKind, Read};
 use zip::ZipArchive;
 
-use crate::util::{read_needles_from_file, read_needles_from_mem, Contact};
+use crate::util::{read_needles_from_file, read_needles_from_mem};
 enum AttributeType {
     OfficeDocument,
 }

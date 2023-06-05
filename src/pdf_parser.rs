@@ -1,7 +1,4 @@
-use std::io::Error;
-use std::{collections::HashSet, io::Cursor};
-
-use zip::ZipArchive;
+use std::collections::HashSet;
 
 use crate::util::{read_needles_from_file, read_needles_from_mem};
 
