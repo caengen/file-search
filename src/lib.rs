@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 pub mod docx_parser;
 pub mod pdf_parser;
-
-#[macro_use]
 pub mod util;
+pub use docx_parser::*;
+pub use pdf_parser::*;
+pub use util::*;

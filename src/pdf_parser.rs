@@ -26,7 +26,7 @@ pub fn parse_from_path(
     parse(&needles, &bytes)
 }
 
-pub fn parse(
+fn parse(
     needles: &Vec<(&str, &str)>,
     haystack_bytes: &[u8],
 ) -> Result<HashSet<(String, String)>, Box<dyn std::error::Error>> {
