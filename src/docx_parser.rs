@@ -23,6 +23,8 @@ where
     R: std::io::Read,
 {
     let mut doc_name = None;
+    let names: Vec<_> = archive.file_names().collect();
+    println!("Found {} files in archive, {:?}", names.len(), names);
     let mut rels = archive.by_name("_rels/.rels").unwrap();
     let mut rels_buffer = String::new();
     rels.read_to_string(&mut rels_buffer).unwrap();
