@@ -5,7 +5,7 @@ use crate::util::{read_needles_from_file, read_needles_from_mem};
 pub fn parse_from_mem(
     needle_bytes: &[u8],
     haystack_bytes: &[u8],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<HashSet<(String, String)>, Box<dyn std::error::Error>> {
     let needles: Vec<(&str, &str)> = read_needles_from_mem(needle_bytes)?;
     println!("Searching accross {} contacts", needles.len());
 
@@ -15,7 +15,7 @@ pub fn parse_from_mem(
 pub fn parse_from_path(
     needles_path: &str,
     haystack_path: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<HashSet<(String, String)>, Box<dyn std::error::Error>> {
     let mut needle_buf = String::new();
     let needles = read_needles_from_file(needles_path, &mut needle_buf);
     println!("Searching accross {} contacts", needles.len());
@@ -29,7 +29,7 @@ pub fn parse_from_path(
 pub fn parse(
     needles: &Vec<(&str, &str)>,
     haystack_bytes: &[u8],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<HashSet<(String, String)>, Box<dyn std::error::Error>> {
     let haystack = pdf_extract::extract_text_from_mem(&haystack_bytes).unwrap();
 
     println!("\nStarting search...");
@@ -39,7 +39,7 @@ pub fn parse(
             println!("{}", trimmed);
             for needle in needles {
                 if trimmed.contains(needle.0) {
-                    acc.insert(needle);
+                    acc.insert((needle.0.to_owned(), needle.1.to_owned()));
                 }
             }
         }
@@ -52,5 +52,5 @@ pub fn parse(
         println!("{}: {:?}", i + 1, match_);
     }
 
-    Ok(())
+    Ok(matches)
 }

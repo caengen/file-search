@@ -46,7 +46,7 @@ where
 pub fn parse_from_mem(
     needle_bytes: &[u8],
     haystack_bytes: &[u8],
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<HashSet<(String, String)>, Box<dyn std::error::Error>> {
     let needles = read_needles_from_mem(needle_bytes)?;
     println!("Searching accross {} contacts", needles.len());
 
@@ -64,7 +64,7 @@ pub fn parse_from_mem(
 pub fn parse_from_path(
     needle_path: &String,
     file_path: &String,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<HashSet<(String, String)>, Box<dyn std::error::Error>> {
     let mut needle_buf = String::new();
     let needles = read_needles_from_file(needle_path, &mut needle_buf);
     println!("Searching accross {} contacts", needles.len());
@@ -77,11 +77,12 @@ pub fn parse_from_path(
 fn parse<R>(
     needles: &Vec<(&str, &str)>,
     archive: &mut ZipArchive<R>,
-) -> Result<(), Box<dyn std::error::Error>>
+) -> Result<HashSet<(String, String)>, Box<dyn std::error::Error>>
 where
     R: std::io::Seek,
     R: std::io::Read,
 {
+    let mut matches = HashSet::new();
     let doc_name = get_doc_name(archive);
 
     if let Some(doc_name) = doc_name {
@@ -124,10 +125,10 @@ where
                 });
 
                 println!("\nStarting search...");
-                let matches = haystack.iter().fold(HashSet::new(), |mut acc, substack| {
+                matches = haystack.iter().fold(HashSet::new(), |mut acc, substack| {
                     for needle in needles {
                         if substack.contains(needle.0) {
-                            acc.insert(needle);
+                            acc.insert((needle.0.to_owned(), needle.1.to_owned()));
                         }
                     }
                     acc
@@ -146,5 +147,5 @@ where
         return Err(Error::new(ErrorKind::NotFound, "Could not find document name").into());
     }
 
-    Ok(())
+    Ok(matches)
 }
