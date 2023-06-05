@@ -1,11 +1,12 @@
 use std::char::ParseCharError;
+use std::fs::File;
+use std::io::Read;
+use std::str::from_utf8;
 
 use nom::bytes::complete::*;
 use nom::character::complete::*;
 use nom::combinator::*;
-use nom::error::ParseError;
 use nom::sequence::*;
-use nom::Err;
 use nom::IResult;
 
 pub type Contact<'a> = (&'a str, &'a str);
@@ -36,22 +37,28 @@ pub fn parse_filetype(file_path: &str) -> IResult<&str, FileType> {
     ))(file_path)
 }
 
-mod macros {
-    // this really doesn't need to be a macro, but I wanted to try it out
-    #[macro_export]
-    macro_rules! read_needles_from_file {
-        ($path:expr, $buf:ident) => {{
-            let mut needles_file = File::open($path).unwrap();
-            let _ = needles_file.read_to_string(&mut $buf).unwrap();
+pub fn read_needles_from_file<'a>(path: &str, buf: &'a mut String) -> Vec<Contact<'a>> {
+    let mut needles_file = File::open(path).unwrap();
+    let _ = needles_file.read_to_string(buf).unwrap();
 
-            let needles = $buf.lines().fold(Vec::new(), |mut acc, line| {
-                if let Ok((_, contact)) = parse_contact(line) {
-                    acc.push(contact);
-                }
-                acc
-            });
+    let needles = buf.lines().fold(Vec::new(), |mut acc, line| {
+        if let Ok((_, contact)) = parse_contact(line) {
+            acc.push(contact);
+        }
+        acc
+    });
 
-            needles
-        }};
-    }
+    needles
+}
+pub fn read_needles_from_mem(bytes: &[u8]) -> Result<Vec<Contact>, Box<dyn std::error::Error>> {
+    let buf = from_utf8(bytes)?;
+
+    let needles = buf.lines().fold(Vec::new(), |mut acc, line| {
+        if let Ok((_, contact)) = parse_contact(line) {
+            acc.push(contact);
+        }
+        acc
+    });
+
+    Ok(needles)
 }

@@ -1,11 +1,9 @@
 use std::collections::HashSet;
 use std::fs::File;
-use std::io::{Error, ErrorKind, Read};
-
+use std::io::{Cursor, Error, ErrorKind, Read};
 use zip::ZipArchive;
 
-use crate::read_needles_from_file;
-use crate::util::parse_contact;
+use crate::util::{read_needles_from_file, read_needles_from_mem, Contact};
 enum AttributeType {
     OfficeDocument,
 }
@@ -19,7 +17,11 @@ impl AttributeType {
     }
 }
 
-fn get_doc_name(archive: &mut ZipArchive<File>) -> Option<String> {
+fn get_doc_name<R>(archive: &mut ZipArchive<R>) -> Option<String>
+where
+    R: std::io::Seek,
+    R: std::io::Read,
+{
     let mut doc_name = None;
     let mut rels = archive.by_name("_rels/.rels").unwrap();
     let mut rels_buffer = String::new();
@@ -41,20 +43,46 @@ fn get_doc_name(archive: &mut ZipArchive<File>) -> Option<String> {
     doc_name
 }
 
+pub fn parse_from_mem(
+    needle_bytes: &[u8],
+    haystack_bytes: &[u8],
+) -> Result<(), Box<dyn std::error::Error>> {
+    let needles = read_needles_from_mem(needle_bytes)?;
+    println!("Searching accross {} contacts", needles.len());
+
+    let haystack_reader = Cursor::new(haystack_bytes);
+    let mut archive = ZipArchive::new(haystack_reader)?;
+
+    parse(&needles, &mut archive)
+}
+
 // The largest chunk of time is spent on parsing the XML tree of the document.
 // Maybe this can be simplified with nom?
 // Time complexity of search is O(n^2) ?
 // Contact list of n elements * Two-Way matching of input.contains (n)
 // todo: clean up
-pub fn parse(needle_path: &String, file_path: &String) -> Result<(), Error> {
+pub fn parse_from_path(
+    needle_path: &String,
+    file_path: &String,
+) -> Result<(), Box<dyn std::error::Error>> {
     let mut needle_buf = String::new();
-    let needles = read_needles_from_file!(needle_path, needle_buf);
+    let needles = read_needles_from_file(needle_path, &mut needle_buf);
     println!("Searching accross {} contacts", needles.len());
 
     let file: File = File::open(file_path).unwrap();
     let mut archive = ZipArchive::new(file).unwrap();
+    parse(&needles, &mut archive)
+}
 
-    let doc_name = get_doc_name(&mut archive);
+fn parse<R>(
+    needles: &Vec<(&str, &str)>,
+    archive: &mut ZipArchive<R>,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    R: std::io::Seek,
+    R: std::io::Read,
+{
+    let doc_name = get_doc_name(archive);
 
     if let Some(doc_name) = doc_name {
         println!("Found document name: {}", doc_name);
@@ -97,7 +125,7 @@ pub fn parse(needle_path: &String, file_path: &String) -> Result<(), Error> {
 
                 println!("\nStarting search...");
                 let matches = haystack.iter().fold(HashSet::new(), |mut acc, substack| {
-                    for needle in &needles {
+                    for needle in needles {
                         if substack.contains(needle.0) {
                             acc.insert(needle);
                         }
@@ -111,17 +139,11 @@ pub fn parse(needle_path: &String, file_path: &String) -> Result<(), Error> {
                 }
             }
             Err(_) => {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    "Could not parse XML tree",
-                ));
+                return Err(Error::new(ErrorKind::InvalidData, "Could not parse XML tree").into());
             }
         }
     } else {
-        return Err(Error::new(
-            ErrorKind::NotFound,
-            "Could not find document name",
-        ));
+        return Err(Error::new(ErrorKind::NotFound, "Could not find document name").into());
     }
 
     Ok(())

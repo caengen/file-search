@@ -2,13 +2,6 @@ use std::env;
 use std::io::{Error, ErrorKind};
 use std::time::Instant;
 
-use nom::bytes::complete::take_until;
-use nom::bytes::streaming::tag;
-use nom::character::complete::alphanumeric1;
-use nom::combinator::value;
-use nom::sequence::terminated;
-use nom::IResult;
-
 use crate::util::{parse_filetype, FileType};
 
 mod docx_parser;
@@ -39,9 +32,9 @@ fn main() {
 
     let start = Instant::now();
     let result = match parse_filetype(haystack_path) {
-        Ok((_, FileType::Docx)) => docx_parser::parse(needles_path, haystack_path),
-        Ok((_, FileType::Pdf)) => pdf_parser::parse(needles_path, haystack_path),
-        Err(_) => Err(Error::new(ErrorKind::Unsupported, "Unsupported file type")),
+        Ok((_, FileType::Docx)) => docx_parser::parse_from_path(needles_path, haystack_path),
+        Ok((_, FileType::Pdf)) => pdf_parser::parse_from_path(needles_path, haystack_path),
+        Err(_) => Err(Error::new(ErrorKind::Unsupported, "Unsupported file type").into()),
     };
     let duration = start.elapsed();
     println!(
