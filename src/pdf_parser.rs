@@ -48,9 +48,5 @@ fn parse(
     });
 
     println!("Found {} matches", matches.len());
-    for (i, match_) in matches.iter().enumerate() {
-        println!("{}: {:?}", i + 1, match_);
-    }
-
     Ok(matches)
 }
