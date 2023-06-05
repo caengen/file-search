@@ -36,7 +36,6 @@ fn parse(
     let matches = haystack.lines().fold(HashSet::new(), |mut acc, line| {
         let trimmed = line.trim();
         if trimmed.len() > 0 {
-            println!("{}", trimmed);
             for needle in needles {
                 if trimmed.contains(needle.0) {
                     acc.insert((needle.0.to_owned(), needle.1.to_owned()));
