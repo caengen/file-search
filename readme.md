@@ -2,7 +2,7 @@
 
 ### Pre-reqs
 
-Search term file should be in the format:
+Needle file should be in the format:
 
 `<term>,<other identifier>`
 
@@ -10,8 +10,8 @@ Search term file should be in the format:
 
 etc...
 
-The file to search through needs to be docx or an unencrypted pdf.
+The haystack needs to be docx or an unencrypted pdf.
 
 ### Run
 
-`cargo run -- <searchterm file path> <file to search path>`
+`cargo run -- <needle path> <haystack path>`
