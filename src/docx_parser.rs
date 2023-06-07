@@ -84,70 +84,71 @@ where
     R: std::io::Seek,
     R: std::io::Read,
 {
-    let mut matches = HashSet::new();
-    let doc_name = get_doc_name(archive);
+    let doc_name = get_doc_name(archive).ok_or(Error::new(
+        ErrorKind::NotFound,
+        "Could not find document name",
+    ))?;
 
-    if let Some(doc_name) = doc_name {
-        println!("Found document name: {}", doc_name);
+    println!("Found document name: {}", doc_name);
 
-        let mut document = archive.by_name(&doc_name).unwrap();
-        let mut buffer = String::new();
-        document.read_to_string(&mut buffer).unwrap();
-        let doc = roxmltree::Document::parse(&buffer);
+    let mut document = archive
+        .by_name(&doc_name)
+        .map_err(|_| Error::new(ErrorKind::NotFound, "Could not find document in archive"))?;
 
-        match doc {
-            Ok(doc) => {
-                let root = doc.root().first_child().unwrap();
-                let body = root.first_element_child().unwrap();
-                let haystack = body.descendants().fold(Vec::new(), |mut acc, elem| {
-                    // check if it has a paragraph tag
-                    if !elem.has_tag_name("p") {
-                        return acc;
-                    }
+    let mut buffer = String::new();
+    document
+        .read_to_string(&mut buffer)
+        .map_err(|_| Error::new(ErrorKind::InvalidData, "Failed to write document to buffer"))?;
 
-                    elem.descendants().for_each(|elem| {
-                        // check if it has a run tag
-                        if !elem.has_tag_name("r") {
-                            return;
-                        }
-                        elem.descendants().for_each(|elem| {
-                            // check if it has a text tag
-                            if !elem.has_tag_name("t") {
-                                return;
-                            }
+    let doc = roxmltree::Document::parse(&buffer)
+        .map_err(|_| Error::new(ErrorKind::InvalidData, "Could not parse XML tree"))?;
 
-                            // check if it has text
-                            if let Some(text) = elem.text() {
-                                acc.push(text);
-                            }
+    let root = doc.root().first_child().ok_or(Error::new(
+        ErrorKind::InvalidData,
+        "Could not find root node",
+    ))?;
+
+    let body = root
+        .first_element_child()
+        .ok_or(Error::new(ErrorKind::InvalidData, "Root node is empty"))?;
+
+    let haystack = body
+        .descendants()
+        .filter(|elem| elem.has_tag_name("p"))
+        .fold(Vec::new(), |mut acc, elem| {
+            elem.descendants()
+                .filter(|elem| elem.has_tag_name("r"))
+                .for_each(|elem| {
+                    // check if it has a run tag
+                    elem.descendants()
+                        .filter(|elem| elem.has_tag_name("t"))
+                        .for_each(|elem| {
+                            elem.text().and_then(|text| {
+                                return Some(acc.push(text));
+                            });
                         });
-                    });
-
-                    acc
                 });
 
-                println!("\nStarting search...");
-                matches = haystack.iter().fold(HashSet::new(), |mut acc, substack| {
-                    for needle in needles {
-                        if substack.contains(needle.0) {
-                            acc.insert((needle.0.to_owned(), needle.1.to_owned()));
-                        }
-                    }
-                    acc
-                });
+            acc
+        });
 
-                println!("Found {} matches", matches.len());
-                for (i, match_) in matches.iter().enumerate() {
-                    println!("{}: {:?}", i + 1, match_);
-                }
-            }
-            Err(_) => {
-                return Err(Error::new(ErrorKind::InvalidData, "Could not parse XML tree").into());
-            }
-        }
-    } else {
-        return Err(Error::new(ErrorKind::NotFound, "Could not find document name").into());
-    }
+    println!("\nStarting search...");
+    let matches = haystack.iter().fold(HashSet::new(), |mut acc, substack| {
+        needles
+            .iter()
+            .filter(|needle| substack.contains(needle.0))
+            .for_each(|needle| {
+                acc.insert((needle.0.to_owned(), needle.1.to_owned()));
+            });
+
+        acc
+    });
+
+    println!("Found {} matches", matches.len());
+    matches
+        .iter()
+        .enumerate()
+        .for_each(|(i, match_)| println!("{}: {:?}", i + 1, match_));
 
     Ok(matches)
 }

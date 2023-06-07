@@ -1,4 +1,7 @@
-use std::collections::HashSet;
+use std::{
+    collections::HashSet,
+    io::{Error, ErrorKind},
+};
 
 use crate::util::{read_needles_from_file, read_needles_from_mem};
 
@@ -30,21 +33,20 @@ fn parse(
     needles: &Vec<(&str, &str)>,
     haystack_bytes: &[u8],
 ) -> Result<HashSet<(String, String)>, Box<dyn std::error::Error>> {
-    let haystack = pdf_extract::extract_text_from_mem(&haystack_bytes).unwrap();
+    let haystack = pdf_extract::extract_text_from_mem(&haystack_bytes)
+        .map_err(|_| Error::new(ErrorKind::InvalidData, "Failed to extract text from pdf"))?;
 
     println!("\nStarting search...");
-    let matches = haystack.lines().fold(HashSet::new(), |mut acc, line| {
-        let trimmed = line.trim();
-        if trimmed.len() > 0 {
-            for needle in needles {
-                if trimmed.contains(needle.0) {
-                    acc.insert((needle.0.to_owned(), needle.1.to_owned()));
-                }
-            }
-        }
+    let matches = haystack.lines().filter(|line| line.trim().len() > 0).fold(
+        HashSet::new(),
+        |mut acc, line| {
+            needles.iter().filter(|n| line.contains(n.0)).for_each(|n| {
+                acc.insert((n.0.to_owned(), n.1.to_owned()));
+            });
 
-        acc
-    });
+            acc
+        },
+    );
 
     println!("Found {} matches", matches.len());
     Ok(matches)

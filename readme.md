@@ -14,4 +14,4 @@ The haystack needs to be docx or an unencrypted pdf.
 
 ### Run
 
-`cargo run -- <needle path> <haystack path>`
+`cargo run <needle path> <haystack path>`
