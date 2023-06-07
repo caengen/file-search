@@ -84,10 +84,8 @@ where
     R: std::io::Seek,
     R: std::io::Read,
 {
-    let doc_name = get_doc_name(archive).ok_or(Error::new(
-        ErrorKind::NotFound,
-        "Could not find document name",
-    ))?;
+    let doc_name = get_doc_name(archive)
+        .ok_or_else(|| Error::new(ErrorKind::NotFound, "Could not find document name"))?;
 
     println!("Found document name: {}", doc_name);
 
@@ -103,14 +101,14 @@ where
     let doc = roxmltree::Document::parse(&buffer)
         .map_err(|_| Error::new(ErrorKind::InvalidData, "Could not parse XML tree"))?;
 
-    let root = doc.root().first_child().ok_or(Error::new(
-        ErrorKind::InvalidData,
-        "Could not find root node",
-    ))?;
+    let root = doc
+        .root()
+        .first_child()
+        .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Could not find root node"))?;
 
     let body = root
         .first_element_child()
-        .ok_or(Error::new(ErrorKind::InvalidData, "Root node is empty"))?;
+        .ok_or_else(|| Error::new(ErrorKind::InvalidData, "Root node is empty"))?;
 
     let haystack = body
         .descendants()
